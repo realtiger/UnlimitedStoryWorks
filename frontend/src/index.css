@@ -1,0 +1,130 @@
+@import 'tailwindcss';
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Inter Variable', sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: #f7f7f9;
+    --foreground: #252b3a;
+    --card: #ffffff;
+    --card-foreground: #252b3a;
+    --popover: #ffffff;
+    --popover-foreground: #252b3a;
+    --primary: #5e7ce0;
+    --primary-foreground: #ffffff;
+    --secondary: #e9edfa;
+    --secondary-foreground: #252b3a;
+    --muted: #ebeef5;
+    --muted-foreground: #575d6c;
+    --accent: #dbe4fb;
+    --accent-foreground: #1f2a4d;
+    --destructive: #f66f6a;
+    --border: #d7d8da;
+    --input: #d7d8da;
+    --ring: #5e7ce0;
+    --chart-1: #5e7ce0;
+    --chart-2: #50d4ab;
+    --chart-3: #fac20a;
+    --chart-4: #f66f6a;
+    --chart-5: #575d6c;
+    --radius: 0.5rem;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #252b3a;
+    --sidebar-primary: #5e7ce0;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #dbe4fb;
+    --sidebar-accent-foreground: #1f2a4d;
+    --sidebar-border: #e5e7eb;
+    --sidebar-ring: #5e7ce0;
+}
+
+.dark {
+    --background: #202124;
+    --foreground: #e8e8e8;
+    --card: #2e2f31;
+    --card-foreground: #e8e8e8;
+    --popover: #2e2f31;
+    --popover-foreground: #e8e8e8;
+    --primary: #5e7ce0;
+    --primary-foreground: #ffffff;
+    --secondary: #383d4f;
+    --secondary-foreground: #e8e8e8;
+    --muted: #383848;
+    --muted-foreground: #a0a0a0;
+    --accent: #45528a;
+    --accent-foreground: #ffffff;
+    --destructive: #f66f6a;
+    --border: #505153;
+    --input: #505153;
+    --ring: #5e7ce0;
+    --chart-1: #5e7ce0;
+    --chart-2: #50d4ab;
+    --chart-3: #fac20a;
+    --chart-4: #f66f6a;
+    --chart-5: #a0a0a0;
+    --sidebar: #2e2f31;
+    --sidebar-foreground: #e8e8e8;
+    --sidebar-primary: #5e7ce0;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #45528a;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #3d3e40;
+    --sidebar-ring: #5e7ce0;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}

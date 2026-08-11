@@ -1,0 +1,100 @@
+# =========================================================
+# Frontend - React / Vite / pnpm
+# =========================================================
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/tsconfig*.tsbuildinfo
+frontend/pnpm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnp.*
+
+# Storybook / Testing / Coverage
+frontend/coverage/
+frontend/storybook-static/
+frontend/.nyc_output/
+frontend/.next/
+frontend/out/
+
+# =========================================================
+# Backend - Rust (Axum 新版后端，待创建)
+# 注意：Cargo.lock 对于二进制项目应该提交，这里不忽略
+# =========================================================
+**/target/
+backend/target/
+# Rust analyzer / IDE
+**/.rustc_info.json
+**/rust-project.json
+# 运行时可能的临时日志/配置
+backend/.env
+backend/config/local.toml
+
+# =========================================================
+# IDE / Editors
+# =========================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# JetBrains 新版
+.idea_modules/
+*.iml
+*.iws
+*.ipr
+
+# =========================================================
+# OS
+# =========================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================================================
+# Environment / Secrets
+# =========================================================
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+*.pem
+*.key
+*.crt
+
+# =========================================================
+# AI Agent 配置（私有 IDE 设定，不入仓库）
+# =========================================================
+.agents/
+.claude/
+.trae/
+
+# =========================================================
+# Logs / Temp
+# =========================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+tmp/
+temp/
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# =========================================================
+# 生成/上传的大文件素材（剧本/音频/视频输出）
+# =========================================================
+data/
+uploads/
+stories/
+outputs/
+renders/
