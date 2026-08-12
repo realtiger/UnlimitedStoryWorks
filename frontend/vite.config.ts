@@ -7,10 +7,27 @@ import path from "path"
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    host: '10.112.48.28',
+    host: '0.0.0.0',
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://10.112.48.28:8080',
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+      '/openapi.json': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+      '/swagger-ui': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+      '/swagger-ui/': {
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
       },
     },
