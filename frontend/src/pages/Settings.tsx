@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Settings01Icon } from '@hugeicons/core-free-icons'
+import { Settings01Icon, Alert01Icon, PlayCircleIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Card,
@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import http from '@/services/http'
 import { cn } from '@/lib/utils'
 
@@ -443,6 +444,33 @@ export default function Settings() {
 }`}
               </pre>
             )}
+            <div className="mt-2 flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-muted-foreground">
+                <HugeiconsIcon
+                  icon={Alert01Icon}
+                  className="inline size-4 -translate-y-[1px] text-amber-500"
+                />{' '}
+                错误提示演示：点击下方按钮，会触发 <code className="rounded bg-muted px-1">GET /api/v1/error-demo</code>，
+                <span className="text-destructive"> http.ts 会自动 toast.error 鸣响提示</span>。
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  http.get('/api/v1/error-demo', {
+                    params: { kind: 'invalid_param' },
+                  }).catch(() => {
+                    /* 接口约定：错误 toast + beep 已经在 http.ts 全局处理；
+                       调用方如果不想让用户看到这个 Promise 跑空
+                       就空 catch。业务场景下这里应该改成表单内联展示，
+                       那时候把 swallowError=true 即可。 */
+                  })
+                }
+              >
+                <HugeiconsIcon icon={PlayCircleIcon} className="size-4" />
+                触发错误提示（演示 toast 鸣响）
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

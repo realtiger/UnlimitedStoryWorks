@@ -29,10 +29,22 @@ function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props) {
   )
 }
 
-function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
+function Toast({ className, variant, ...props }: ToastPrimitive.Root.Props & { variant?: 'default' | 'success' | 'warning' | 'error' | 'info' }) {
+  const variantClasses =
+    variant === 'error'
+      ? 'border-destructive/60 bg-destructive/5 [&_[data-slot=toast-title]]:text-destructive'
+      : variant === 'warning'
+        ? 'border-amber-500/60 bg-amber-500/5 [&_[data-slot=toast-title]]:text-amber-700 dark:[&_[data-slot=toast-title]]:text-amber-400'
+        : variant === 'success'
+          ? 'border-emerald-500/60 bg-emerald-500/5 [&_[data-slot=toast-title]]:text-emerald-700 dark:[&_[data-slot=toast-title]]:text-emerald-400'
+          : variant === 'info'
+            ? 'border-primary/60 bg-primary/5 [&_[data-slot=toast-title]]:text-primary'
+            : ''
+
   return (
     <ToastPrimitive.Root
       data-slot="toast"
+      data-variant={variant ?? 'default'}
       className={cn(
         "group/toast pointer-events-auto absolute right-0 top-0 z-[calc(1000-var(--toast-index))] w-full origin-top rounded-md border bg-popover text-popover-foreground shadow-lg will-change-transform outline-none select-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "[--gap:0.75rem] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)+calc(var(--toast-index)*var(--gap))+var(--toast-swipe-movement-y))] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))]",
@@ -49,6 +61,7 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
         "data-expanded:data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))]",
         "data-expanded:data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))]",
         "data-expanded:data-ending-style:data-[swipe-direction=up]:[transform:translateY(calc(var(--toast-swipe-movement-y)-150%))]",
+        variantClasses,
         className
       )}
       {...props}
@@ -181,19 +194,28 @@ function ToastIcon({ type }: { type: string | undefined }) {
 function ToastList() {
   const { toasts } = ToastPrimitive.useToastManager()
 
-  return toasts.map((toastItem) => (
-    <Toast key={toastItem.id} toast={toastItem}>
-      <ToastContent>
-        <ToastIcon type={toastItem.type} />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <ToastTitle />
-          <ToastDescription />
-        </div>
-        <ToastAction />
-        <ToastClose />
-      </ToastContent>
-    </Toast>
-  ))
+  return toasts.map((toastItem) => {
+    const variant =
+      toastItem.type === 'error' ||
+      toastItem.type === 'success' ||
+      toastItem.type === 'warning' ||
+      toastItem.type === 'info'
+        ? (toastItem.type as 'error' | 'success' | 'warning' | 'info')
+        : undefined
+    return (
+      <Toast key={toastItem.id} toast={toastItem} variant={variant}>
+        <ToastContent>
+          <ToastIcon type={toastItem.type} />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <ToastTitle />
+            <ToastDescription />
+          </div>
+          <ToastAction />
+          <ToastClose />
+        </ToastContent>
+      </Toast>
+    )
+  })
 }
 
 function Toaster({
