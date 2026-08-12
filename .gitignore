@@ -1,5 +1,5 @@
 # =========================================================
-# Frontend - React / Vite / pnpm
+# Frontend - React 19 / Vite 8 / pnpm
 # =========================================================
 frontend/node_modules/
 frontend/dist/
@@ -18,17 +18,28 @@ frontend/.next/
 frontend/out/
 
 # =========================================================
-# Backend - Rust (Axum 新版后端，待创建)
-# 注意：Cargo.lock 对于二进制项目应该提交，这里不忽略
+# Backend - Rust / Axum
 # =========================================================
-**/target/
+# Rust 构建产物（占空间几十 GB，必须忽略）
 backend/target/
-# Rust analyzer / IDE
+**/target/
+
+# Rust analyzer / IDE 临时文件
 **/.rustc_info.json
 **/rust-project.json
-# 运行时可能的临时日志/配置
+
+# 后端运行时：日志文件（按天滚动 app.YYYY-MM-DD）
+backend/logs/
+backend/logs/**
+
+# 后端本地私有覆盖配置（config.example.yaml 是默认模板，不忽略）
+backend/config.yaml
 backend/.env
-backend/config/local.toml
+
+# 注意：backend/config.yaml 是默认配置模板 + 字段示例，**需要**提交
+# 私有修改请复制成 config.local.yaml，它已经在上面忽略了
+
+.logs
 
 # =========================================================
 # IDE / Editors
@@ -66,7 +77,8 @@ Desktop.ini
 *.crt
 
 # =========================================================
-# AI Agent 配置（私有 IDE 设定，不入仓库）
+# AI Agent 配置（IDE 私有设定，不入仓库）
+# 提交规则本身的 README 里已有说明
 # =========================================================
 .agents/
 .claude/
