@@ -32,13 +32,13 @@ function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props) {
 function Toast({ className, variant, ...props }: ToastPrimitive.Root.Props & { variant?: 'default' | 'success' | 'warning' | 'error' | 'info' }) {
   const variantClasses =
     variant === 'error'
-      ? 'border-destructive/60 bg-destructive/5 [&_[data-slot=toast-title]]:text-destructive'
+      ? 'border-destructive/40 border-l-4 border-l-destructive [&_[data-slot=toast-title]]:text-destructive'
       : variant === 'warning'
-        ? 'border-amber-500/60 bg-amber-500/5 [&_[data-slot=toast-title]]:text-amber-700 dark:[&_[data-slot=toast-title]]:text-amber-400'
+        ? 'border-amber-500/40 border-l-4 border-l-amber-500 [&_[data-slot=toast-title]]:text-amber-700 dark:[&_[data-slot=toast-title]]:text-amber-400'
         : variant === 'success'
-          ? 'border-emerald-500/60 bg-emerald-500/5 [&_[data-slot=toast-title]]:text-emerald-700 dark:[&_[data-slot=toast-title]]:text-emerald-400'
+          ? 'border-emerald-500/40 border-l-4 border-l-emerald-500 [&_[data-slot=toast-title]]:text-emerald-700 dark:[&_[data-slot=toast-title]]:text-emerald-400'
           : variant === 'info'
-            ? 'border-primary/60 bg-primary/5 [&_[data-slot=toast-title]]:text-primary'
+            ? 'border-primary/40 border-l-4 border-l-primary [&_[data-slot=toast-title]]:text-primary'
             : ''
 
   return (

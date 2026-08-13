@@ -3,7 +3,7 @@ import {
   InformationCircleIcon,
   Book02Icon,
   SparklesIcon,
-  Settings01Icon,
+  FolderCheckIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import type { HeaderNavItem } from '@/components/layout/Header'
@@ -25,6 +25,13 @@ export async function fetchHeaderMenu(): Promise<HeaderNavItem[]> {
       href: '/',
       icon: ({ className, ...props }) => (
         <HugeiconsIcon icon={Home01Icon} className={className} {...props} />
+      ),
+    },
+    {
+      label: '项目',
+      href: '/projects',
+      icon: ({ className, ...props }) => (
+        <HugeiconsIcon icon={FolderCheckIcon} className={className} {...props} />
       ),
     },
     {
@@ -54,18 +61,30 @@ export async function fetchSidebarMenu(): Promise<SidebarSection[]> {
           ),
         },
         {
+          label: '项目管理',
+          href: '/projects',
+          icon: ({ className, ...props }) => (
+            <HugeiconsIcon
+              icon={FolderCheckIcon}
+              className={className}
+              {...props}
+            />
+          ),
+        },
+        {
           label: '故事创作',
           href: '/stories',
           icon: ({ className, ...props }) => (
             <HugeiconsIcon icon={Book02Icon} className={className} {...props} />
           ),
-          badge: 3,
+          disabled: true,
         },
         {
           label: '创作中心',
           icon: ({ className, ...props }) => (
             <HugeiconsIcon icon={SparklesIcon} className={className} {...props} />
           ),
+          disabled: true,
           children: [
             { label: '新建故事', href: '/stories/new' },
             { label: '我的草稿', href: '/stories/drafts' },
@@ -86,13 +105,6 @@ export async function fetchSidebarMenu(): Promise<SidebarSection[]> {
               className={className}
               {...props}
             />
-          ),
-        },
-        {
-          label: '设置',
-          href: '/settings',
-          icon: ({ className, ...props }) => (
-            <HugeiconsIcon icon={Settings01Icon} className={className} {...props} />
           ),
         },
       ],
@@ -121,3 +133,4 @@ export async function fetchAllMenu() {
   ])
   return { headerNav, sidebarSections, footerLinks }
 }
+

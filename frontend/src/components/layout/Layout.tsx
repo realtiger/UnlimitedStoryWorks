@@ -66,7 +66,10 @@ export function Layout({
     >
       {headerEnabled && <Header {...headerRest} />}
 
-      <SidebarProvider defaultOpen={sidebarEnabled && variant === 'default'}>
+      <SidebarProvider
+        defaultOpen={sidebarEnabled && variant === 'default'}
+        className="min-h-0 flex-1"
+      >
         <div className="flex flex-1 w-full">
           {sidebarEnabled && finalSidebarSections.length > 0 && (
             <LayoutSidebar

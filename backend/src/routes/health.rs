@@ -1,18 +1,16 @@
-//! 健康检查：K8s liveness/readiness 用，返回结构最小化。
+//! 网站健康检查：前端调用、Swagger 展示、反向代理探活。
 
 use axum::{Router, routing::get};
 
 use crate::common::prelude::*;
-use crate::config::cfg;
 
 pub fn router() -> Router {
     Router::new().route("/health", get(health))
 }
 
-/// K8s liveness / readiness 探针
+/// 网站健康检查接口
 ///
-/// - 总是返回 HTTP 200（除非进程挂了）
-/// - 适合 Prometheus / 负载均衡健康检查轮询，**payload 极小**
+/// 总是返回 HTTP 200（除非进程挂了），适合前端轮询、反向代理探活。
 #[utoipa::path(
     get,
     path = "/health",
@@ -22,21 +20,15 @@ pub fn router() -> Router {
          body = inline(ApiResponse<serde_json::Value>),
          example = json!(
             {"code":"S00000","success":true,"message":"ok",
-             "data":{"status":"ok","version":"0.1.0","env":"development"}}
+             "data":{"status":"ok","name":"Unlimited Story Works","version":"0.1.0"}}
          )),
     ),
 )]
 pub async fn health() -> ApiResponse<serde_json::Value> {
-    let c = cfg();
-    tracing::info!(
-        target: "usw::http::health",
-        version = %c.site_info.version,
-        env = %c.site_info.environment,
-        "health check ok"
-    );
+    tracing::info!(target: "usw::http::health", "health check ok");
     ok(serde_json::json!({
         "status": "ok",
-        "version": c.site_info.version,
-        "env": c.site_info.environment,
+        "name": "Unlimited Story Works",
+        "version": "0.1.0",
     }))
 }

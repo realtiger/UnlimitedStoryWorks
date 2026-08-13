@@ -33,7 +33,7 @@ backend/logs/
 backend/logs/**
 
 # 后端本地私有覆盖配置（config.example.yaml 是默认模板，不忽略）
-backend/config.yaml
+backend/usw
 backend/.env
 
 # 注意：backend/config.yaml 是默认配置模板 + 字段示例，**需要**提交

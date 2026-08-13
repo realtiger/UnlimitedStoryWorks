@@ -48,7 +48,7 @@ pub fn ok<T: Serialize>(value: T) -> ApiResponse<T> {
 }
 
 /// 成功但 data 为空（比如 DELETE 不需要返回 body）
-pub fn ok_empty() -> ApiResponse<serde_json::Value> {
+pub fn ok_empty() -> ApiResponse<()> {
     ApiResponse {
         code: ErrorCode::Ok.code(),
         success: true,

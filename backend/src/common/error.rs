@@ -31,11 +31,10 @@ impl AppError {
     pub fn new(code: ErrorCode, msg: impl Into<String>) -> Self {
         Self { code, message: msg.into(), source: anyhow::anyhow!("") }
     }
-    pub fn from_code(code: ErrorCode) -> Self {
-        let msg = code.default_message();
-        Self { code, message: msg.clone(), source: anyhow::anyhow!("{msg}") }
+    pub fn from_code_with_msg(code: ErrorCode, msg: impl Into<String>) -> Self {
+        let msg_s = msg.into();
+        Self { code, message: msg_s.clone(), source: anyhow::anyhow!("{msg_s}") }
     }
-    /// 把底层 source 替换为一个带 context 的 anyhow 错误
     pub fn with_src<E: Into<anyhow::Error>>(mut self, src: E) -> Self {
         self.source = src.into(); self
     }
@@ -90,6 +89,7 @@ impl IntoResponse for AppError {
             self.code,
             InvalidJson | InvalidParam | InvalidQuery | InvalidForm
             | Unauthorized | PermissionDenied | TokenInvalid | OriginCheckFailed
+            | ProjectNotFound | ProjectNameInvalid | ProjectSlugDuplicated | ProjectBadState
             | StoryNotFound | JobNotFound | FileNotFound | FileTooLarge | FileTypeNotAllowed
             | EmptyResult
         );

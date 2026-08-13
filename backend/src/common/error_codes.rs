@@ -19,6 +19,7 @@ use thiserror::Error;
 // E08_xxx = 第三方 / 外部依赖
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 #[derive(Debug, Error, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ErrorCode {
     // ===== 00 通用 =====
@@ -71,7 +72,15 @@ pub enum ErrorCode {
     #[error("配置重复安装")]
     ConfigAlreadyInstalled,
 
-    // ===== 04 业务 - 剧本 / 剧集 =====
+    // ===== 04 业务 - Project / 剧本 / 剧集 =====
+    #[error("项目不存在")]
+    ProjectNotFound,
+    #[error("项目名称无效（空或超过 120 字符）")]
+    ProjectNameInvalid,
+    #[error("项目 Slug 已存在")]
+    ProjectSlugDuplicated,
+    #[error("项目状态不允许当前操作")]
+    ProjectBadState,
     #[error("剧本不存在")]
     StoryNotFound,
     #[error("剧本名称重复")]
@@ -116,6 +125,10 @@ pub enum ErrorCode {
     // ===== 08 外部依赖 =====
     #[error("数据库错误")]
     DatabaseError,
+    #[error("数据库查询或写入失败")]
+    DatabaseQueryError,
+    #[error("数据库约束冲突（唯一键/外键）")]
+    DatabaseConstraint,
     #[error("对象存储 (S3 / OSS) 错误")]
     ObjectStorageError,
     #[error("消息队列错误")]
@@ -150,11 +163,16 @@ impl ErrorCode {
             ConfigInvalid => ("E", 03_002),
             ConfigAlreadyInstalled => ("E", 03_003),
 
-            StoryNotFound => ("E", 04_001),
-            StoryDuplicated => ("E", 04_002),
-            StoryBadState => ("E", 04_003),
-            SceneNotFound => ("E", 04_004),
-            CharacterNotFound => ("E", 04_005),
+            // ===== 04 业务 - Project / 剧集 =====
+            ProjectNotFound => ("E", 04_001),
+            ProjectNameInvalid => ("E", 04_002),
+            ProjectSlugDuplicated => ("E", 04_003),
+            ProjectBadState => ("E", 04_004),
+            StoryNotFound => ("E", 04_011),
+            StoryDuplicated => ("E", 04_012),
+            StoryBadState => ("E", 04_013),
+            SceneNotFound => ("E", 04_014),
+            CharacterNotFound => ("E", 04_015),
 
             JobNotFound => ("E", 05_001),
             JobBadState => ("E", 05_002),
@@ -171,10 +189,14 @@ impl ErrorCode {
             AiBadFormat => ("E", 07_003),
             AiAuthFailed => ("E", 07_004),
 
+            // ===== 08 外部依赖 =====
+            // ===== 08_001 - 08_003 数据库 =====
             DatabaseError => ("E", 08_001),
-            ObjectStorageError => ("E", 08_002),
-            MqError => ("E", 08_003),
-            RenderNodeError => ("E", 08_004),
+            DatabaseQueryError => ("E", 08_002),
+            DatabaseConstraint => ("E", 08_003),
+            ObjectStorageError => ("E", 08_004),
+            MqError => ("E", 08_005),
+            RenderNodeError => ("E", 08_006),
         };
         format!("{prefix}{n:05}")
     }
@@ -216,7 +238,8 @@ mod tests {
     #[test]
     fn code_format() {
         assert_eq!(ErrorCode::Ok.code(), "S00000");
-        assert_eq!(ErrorCode::StoryNotFound.code(), "E04001");
+        assert_eq!(ErrorCode::ProjectNotFound.code(), "E04001");
+        assert_eq!(ErrorCode::StoryNotFound.code(), "E04011");
         assert_eq!(ErrorCode::AiTimeout.code(), "E07002");
     }
 }

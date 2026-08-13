@@ -36,7 +36,7 @@ export function Footer({
   return (
     <footer
       className={cn(
-        'border-t border-border bg-background/50 backdrop-blur',
+        'border-t border-border bg-background',
         className
       )}
       data-slot="footer"
