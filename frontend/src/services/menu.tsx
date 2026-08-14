@@ -20,31 +20,31 @@ export { type HeaderNavItem, type SidebarSection, type FooterLink }
 
 export async function fetchHeaderMenu(): Promise<HeaderNavItem[]> {
   return [
-    {
-      label: '首页',
-      href: '/',
-      icon: ({ className, ...props }) => (
-        <HugeiconsIcon icon={Home01Icon} className={className} {...props} />
-      ),
-    },
-    {
-      label: '项目',
-      href: '/projects',
-      icon: ({ className, ...props }) => (
-        <HugeiconsIcon icon={FolderCheckIcon} className={className} {...props} />
-      ),
-    },
-    {
-      label: '关于',
-      href: '/about',
-      icon: ({ className, ...props }) => (
-        <HugeiconsIcon
-          icon={InformationCircleIcon}
-          className={className}
-          {...props}
-        />
-      ),
-    },
+    // {
+    //   label: '首页',
+    //   href: '/',
+    //   icon: ({ className, ...props }) => (
+    //     <HugeiconsIcon icon={Home01Icon} className={className} {...props} />
+    //   ),
+    // },
+    // {
+    //   label: '项目',
+    //   href: '/projects',
+    //   icon: ({ className, ...props }) => (
+    //     <HugeiconsIcon icon={FolderCheckIcon} className={className} {...props} />
+    //   ),
+    // },
+    // {
+    //   label: '关于',
+    //   href: '/about',
+    //   icon: ({ className, ...props }) => (
+    //     <HugeiconsIcon
+    //       icon={InformationCircleIcon}
+    //       className={className}
+    //       {...props}
+    //     />
+    //   ),
+    // },
   ]
 }
 

@@ -1,12 +1,15 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Moon02Icon,
   Sun02Icon,
+  FolderIcon,
+  ExchangeIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@/lib/utils'
 import { useLayoutStore } from '@/store/useLayoutStore'
 import { useMenuStore } from '@/store/useMenuStore'
+import { useProjectStore } from '@/store/useProjectStore'
 import { Button } from '@/components/ui/button'
 import {
   NavigationMenu,
@@ -15,6 +18,11 @@ import {
   NavigationMenuLink,
   navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 export interface HeaderNavItem {
   label: string
@@ -44,9 +52,15 @@ export function Header({
   navItems,
   actions,
 }: HeaderProps) {
+  const navigate = useNavigate()
   const { theme, toggleTheme } = useLayoutStore()
   const storeNav = useMenuStore((s) => s.headerNav)
+  const { selectedProject } = useProjectStore()
   const items = navItems ?? storeNav
+
+  const handleProjectClick = () => {
+    navigate('/projects')
+  }
 
   return (
     <header
@@ -68,8 +82,43 @@ export function Header({
         </span>
       </div>
 
+      <Tooltip>
+        <TooltipTrigger
+          render={({ className: ttClassName, onClick: ttOnClick, ...ttProps }: any) => (
+            <Button
+              variant="ghost"
+              onClick={(e) => {
+                ttOnClick?.(e)
+                handleProjectClick()
+              }}
+              className={cn('ml-4 gap-2 h-9 px-3 hover:bg-accent max-w-[240px]', ttClassName)}
+              {...ttProps}
+            >
+              <HugeiconsIcon icon={FolderIcon} className="text-primary shrink-0" />
+              {selectedProject ? (
+                <>
+                  <span className="font-medium text-sm truncate">
+                    {selectedProject.name}
+                  </span>
+                  <HugeiconsIcon icon={ExchangeIcon} className="size-4 text-muted-foreground shrink-0" />
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">无项目，点击选择</span>
+              )}
+            </Button>
+          )}
+        />
+        <TooltipContent>
+          {selectedProject ? (
+            <p>{selectedProject.name} · 点击切换项目</p>
+          ) : (
+            <p>暂未选择项目，点击前往项目列表选择</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+
       {showNav && items.length > 0 && (
-        <div className="ml-4 hidden lg:block">
+        <div className="ml-2 hidden lg:block">
           <NavigationMenu>
             <NavigationMenuList className="gap-1">
               {items.map((item) => {

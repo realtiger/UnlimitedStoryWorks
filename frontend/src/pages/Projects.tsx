@@ -7,6 +7,7 @@ import {
   Delete02Icon,
   ReloadIcon,
   FolderAddIcon,
+  CheckmarkBadge01Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
@@ -47,6 +48,7 @@ import { cn } from '@/lib/utils'
 
 import projectsApi from '@/services/projects/api'
 import type { CreateProjectReq, Project, UpdateProjectReq } from '@/services/projects/types'
+import { useProjectStore } from '@/store/useProjectStore'
 
 // ---------------------------------------------------------------------------
 // 工具
@@ -70,6 +72,7 @@ export default function ProjectsPage() {
   const queryClient = useQueryClient()
   const [editTarget, setEditTarget] = useState<Project | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const { selectedProject, selectProject } = useProjectStore()
 
   // ---- 查询 ----
   const {
@@ -81,6 +84,11 @@ export default function ProjectsPage() {
     queryKey: ['projects'],
     queryFn: () => projectsApi.list(),
   })
+
+  const handleSelectProject = (p: Project) => {
+    selectProject(p)
+    toast.add({ type: 'success', title: `已选择项目「${p.name}」` })
+  }
 
   // ---- 新建 ----
   const createMut = useMutation({
@@ -168,42 +176,75 @@ export default function ProjectsPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
-            <Card key={p.id} className="transition-shadow hover:shadow-md">
-              <CardHeader>
-                <CardTitle className="line-clamp-1">{p.name}</CardTitle>
-                <CardDescription className="line-clamp-2 min-h-[2.4em]">
-                  {p.description || '暂无描述'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <span>创建于 {formatTime(p.created_at)}</span>
-                  <span>·</span>
-                  <span>更新于 {formatTime(p.updated_at)}</span>
-                </div>
-              </CardContent>
-              <CardFooter className="justify-end gap-1 border-t border-border/50 pt-3">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setEditTarget(p)}
+          {projects.map((p) => {
+            const isSelected = selectedProject?.id === p.id
+            return (
+              <Card
+                key={p.id}
+                className={cn(
+                  'transition-all duration-300 ease-out cursor-pointer group',
+                  'hover:shadow-md hover:border-primary/50',
+                  isSelected
+                    ? 'border-primary border-2 ring-4 ring-primary/10 shadow-xl shadow-primary/20 -translate-y-1 bg-gradient-to-br from-background via-primary/[0.02] to-primary/[0.05]'
+                    : ''
+                )}
+                onClick={() => handleSelectProject(p)}
+              >
+                <CardHeader className="relative">
+                  {isSelected && (
+                    <div className="absolute top-3 right-3">
+                      <HugeiconsIcon
+                        icon={CheckmarkBadge01Icon}
+                        className="size-5 text-primary"
+                      />
+                    </div>
+                  )}
+                  <CardTitle className="line-clamp-1 pr-7">{p.name}</CardTitle>
+                  <CardDescription className="line-clamp-2 min-h-[2.4em]">
+                    {p.description || '暂无描述'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                    <span>创建于 {formatTime(p.created_at)}</span>
+                    <span>·</span>
+                    <span>更新于 {formatTime(p.updated_at)}</span>
+                  </div>
+                </CardContent>
+                <CardFooter
+                  className="justify-end gap-1 border-t border-border/50 pt-3"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <HugeiconsIcon icon={Edit02Icon} />
-                  <span className="sr-only">编辑</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setDeleteTarget(p)}
-                  className="text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400"
-                >
-                  <HugeiconsIcon icon={Delete02Icon} />
-                  <span className="sr-only">删除</span>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSelectProject(p)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <HugeiconsIcon icon={CheckmarkBadge01Icon} data-icon="inline-start" />
+                    选择
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setEditTarget(p)}
+                  >
+                    <HugeiconsIcon icon={Edit02Icon} />
+                    <span className="sr-only">编辑</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setDeleteTarget(p)}
+                    className="text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400"
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} />
+                    <span className="sr-only">删除</span>
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
+          })}
         </div>
       )}
 
