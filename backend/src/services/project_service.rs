@@ -13,9 +13,6 @@ use utoipa::ToSchema;
 use crate::common::error_codes::ErrorCode;
 use crate::db;
 
-/// 删除模式：soft = 软删（status → deleted），hard = 物理删除。
-/// TODO 后期由中间件控制，目前固定为 soft。
-const DELETE_MODE: &str = "soft";
 
 const SELECT_PROJECT: &str =
     "SELECT id,level,status,created_at,updated_at,name,description,cover_image FROM projects";
@@ -234,15 +231,16 @@ pub async fn update(
     get_by_id(pool, id).await
 }
 
-/// 删除项目，按 DELETE_MODE 常量决定软删/硬删。只允许操作 status=active 的数据。
+/// 删除项目，按 mode 参数决定软删/硬删。只允许操作 status=active 的数据。
 pub async fn delete(
     pool: &AnyPool,
     id: i64,
+    mode: &str,
 ) -> Result<(), crate::common::error::AppError> {
     // 确认存在且 active
     let _ = get_by_id(pool, id).await?;
 
-    match DELETE_MODE {
+    match mode {
         "hard" => {
             let res = sqlx::query("DELETE FROM projects WHERE id=? AND status='active'")
                 .bind(id)

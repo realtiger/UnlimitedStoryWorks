@@ -13,6 +13,7 @@ use crate::common::logging as log_mod;
 mod common;
 mod config;
 mod db;
+mod middleware;
 mod routes;
 mod services;
 
@@ -130,7 +131,7 @@ async fn main() {
     }
 
     // 构建路由 + 启动
-    let app = routes::build_router();
+    let app = routes::build_router(&cfg);
     let grace_secs = server.graceful_shutdown_secs;
 
     println!("▶ workspace: {}", workspace_dir.display());

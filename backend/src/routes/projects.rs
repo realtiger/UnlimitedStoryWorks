@@ -4,11 +4,12 @@
 //! id 是雪花算法整数（前端数字类型），路由统一用 `{id}`（Axum 0.8 格式）。
 
 use axum::{
-    Router,
+    Extension, Router,
     extract::{Path, Query},
     routing::get,
 };
 use crate::common::prelude::*;
+use crate::middleware::delete_mode::DeleteMode;
 use crate::services::project_service::{
     CreateProjectReq, ListProjectsQuery, Project, UpdateProjectReq,
 };
@@ -117,8 +118,9 @@ pub async fn update_project(
 )]
 pub async fn delete_project(
     Path(id): Path<i64>,
+    Extension(mode): Extension<DeleteMode>,
 ) -> Result<ApiResponse<()>, AppError> {
     let pool = db();
-    crate::services::project_service::delete(pool, id).await?;
+    crate::services::project_service::delete(pool, id, &mode.0).await?;
     Ok(ok_empty())
 }

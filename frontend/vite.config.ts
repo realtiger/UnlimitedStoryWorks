@@ -14,22 +14,6 @@ export default defineConfig({
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
       },
-      '/health': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true,
-      },
-      '/openapi.json': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true,
-      },
-      '/swagger-ui': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true,
-      },
-      '/swagger-ui/': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true,
-      },
     },
   },
   resolve: {

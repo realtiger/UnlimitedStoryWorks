@@ -37,7 +37,6 @@ impl Default for ServerConfig {
 // Cors
 // ---------------------------------------------------------------------------
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct CorsConfig {
     #[serde(default = "default_bool_true")]
@@ -54,20 +53,16 @@ pub struct CorsConfig {
     pub max_age_secs: u64,
 }
 
-#[allow(dead_code)]
 fn default_bool_true() -> bool { true }
 
-#[allow(dead_code)]
 fn default_allow_methods() -> Vec<String> {
     vec!["GET".into(), "POST".into(), "PUT".into(), "PATCH".into(), "DELETE".into(), "OPTIONS".into()]
 }
 
-#[allow(dead_code)]
 fn default_allow_headers() -> Vec<String> {
     vec!["Content-Type".into(), "Authorization".into(), "Accept".into(), "X-Requested-With".into()]
 }
 
-#[allow(dead_code)]
 fn default_max_age_secs() -> u64 { 86400 }
 
 impl Default for CorsConfig {
@@ -182,7 +177,6 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn server(&self) -> ServerConfig { self.server.clone().unwrap_or_default() }
-    #[allow(dead_code)]
     pub fn cors(&self) -> CorsConfig { self.cors.clone().unwrap_or_default() }
     pub fn logging(&self) -> LoggingConfig { self.logging.clone().unwrap_or_default() }
     pub fn database(&self) -> DatabaseConfig { self.database.clone().unwrap_or_default() }
