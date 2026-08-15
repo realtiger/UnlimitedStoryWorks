@@ -56,3 +56,25 @@ CREATE INDEX IF NOT EXISTS idx_ai_backends_level      ON ai_backends(level);
 CREATE INDEX IF NOT EXISTS idx_ai_backends_name       ON ai_backends(name);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_ai_backends_default_cat
     ON ai_backends(category) WHERE status = 'active' AND is_default = 1;
+
+-- ---------------------------------------------------------------------------
+-- 003 episodes：项目剧本的单集内容。集号由 level 排序派生，不单独存储。
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS episodes (
+    id              INTEGER PRIMARY KEY,
+    level           INTEGER NOT NULL,
+    status          TEXT    NOT NULL DEFAULT 'active',
+    created_at      TEXT    NOT NULL,
+    updated_at      TEXT    NOT NULL,
+    project_id      INTEGER NOT NULL,
+    title           TEXT    NOT NULL,
+    content         TEXT,
+    duration_seconds INTEGER
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_episodes_status       ON episodes(status);
+CREATE INDEX IF NOT EXISTS idx_episodes_project_id   ON episodes(project_id);
+CREATE INDEX IF NOT EXISTS idx_episodes_level        ON episodes(level);
+CREATE INDEX IF NOT EXISTS idx_episodes_created_at   ON episodes(created_at);
+CREATE INDEX IF NOT EXISTS idx_episodes_proj_level   ON episodes(project_id, level);
+CREATE INDEX IF NOT EXISTS idx_episodes_title        ON episodes(title);

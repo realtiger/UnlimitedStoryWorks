@@ -2,6 +2,18 @@ export type StoryStyle = 'modern' | 'ancient' | 'fantasy' | 'daily'
 export type StoryGenre = 'drama' | 'comedy' | 'adventure'
 export type GenerateMode = 'prompt' | 'import'
 
+export const STYLE_VALUE_TO_LABEL: Record<StoryStyle, string> = {
+  modern: '现代',
+  ancient: '古风',
+  fantasy: '奇幻',
+  daily: '日常',
+}
+export const GENRE_VALUE_TO_LABEL: Record<StoryGenre, string> = {
+  drama: '剧情',
+  comedy: '喜剧',
+  adventure: '冒险',
+}
+
 export interface Episode {
   id: number
   project_id: number
@@ -34,19 +46,20 @@ export interface MoveEpisodeReq {
 
 export interface GenerateEpisodesByPromptReq {
   project_id: number
-  story_outline: string
-  style: StoryStyle
-  genre: StoryGenre
-  episode_count: number
+  outline: string
+  style: string
+  genre: string
+  count: number
+  ai_backend_id?: number | null
 }
 
 export interface GenerateEpisodesByImportReq {
   project_id: number
-  file_name: string
-  file_content: string
-  style: StoryStyle
-  genre: StoryGenre
-  episode_count: number
+  file_ext: string
+  content: string
+  style_hint: string
+  genre_hint: string
+  ai_backend_id?: number | null
 }
 
 export interface ListEpisodesQuery {

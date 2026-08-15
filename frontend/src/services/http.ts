@@ -102,7 +102,7 @@ function beep() {
 // ---------------------------------------------------------------------------
 
 const instance: AxiosInstance = axios.create({
-  timeout: 15000,
+  timeout: 600000,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',

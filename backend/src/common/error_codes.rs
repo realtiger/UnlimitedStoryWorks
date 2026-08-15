@@ -103,6 +103,30 @@ pub enum ErrorCode {
     SceneNotFound,
     #[error("角色不存在")]
     CharacterNotFound,
+    /// 剧集不存在或已被软删除
+    #[error("剧集不存在")]
+    EpisodeNotFound,
+    /// 剧集标题为空或超长
+    #[error("剧集标题不合法")]
+    EpisodeTitleInvalid,
+    /// 在 project 范围内 move 方向不合法（首集上移、末集下移等）
+    #[error("剧集移动方向不合法")]
+    EpisodeBadMove,
+    /// Project 下生成剧集时 outline/style/genre/count 等必填字段缺失
+    #[error("剧集生成参数不完整")]
+    EpisodeGenerateMissing,
+    /// generate count 超出允许范围（1-100）
+    #[error("剧集生成数量超出范围")]
+    EpisodeGenerateCountBad,
+    /// 导入小说全文为空或长度超限
+    #[error("导入小说内容不合法")]
+    EpisodeImportContentBad,
+    /// 导入小说扩展名/类型不在白名单
+    #[error("导入小说文件类型不支持")]
+    EpisodeImportTypeBad,
+    /// 上下移动时找不到相邻剧集（竞态/已删除）
+    #[error("剧集排序失败")]
+    EpisodeReorderFailed,
 
     // ===== 05 业务 - 任务 / JOB =====
     #[error("任务不存在")]
@@ -133,6 +157,18 @@ pub enum ErrorCode {
     AiBadFormat,
     #[error("AI 模型鉴权失败（API Key 缺失 / 错误）")]
     AiAuthFailed,
+    /// 未找到某 AI 类型的默认后端（比如生成剧本需要 text 默认后端但没配置）
+    #[error("未配置可用的 AI 推理后端")]
+    AiBackendMissing,
+    /// AI 请求发送失败（网络错误 / DNS / 连接被拒）
+    #[error("AI 请求发送失败")]
+    AiRequestFailed,
+    /// AI 返回 HTTP 非 2xx（500/404/429 等，限流在单独 E07_001）
+    #[error("AI 推理后端返回错误状态码")]
+    AiBadStatus,
+    /// 从 AI 返回文本中解析 JSON 失败（内容不是合法 JSON）
+    #[error("AI 返回 JSON 解析失败")]
+    AiJsonParseFailed,
 
     // ===== 08 外部依赖 =====
     #[error("数据库错误")]
@@ -189,6 +225,14 @@ impl ErrorCode {
             StoryBadState => ("E", 04_013),
             SceneNotFound => ("E", 04_014),
             CharacterNotFound => ("E", 04_015),
+            EpisodeNotFound => ("E", 04_021),
+            EpisodeTitleInvalid => ("E", 04_022),
+            EpisodeBadMove => ("E", 04_023),
+            EpisodeGenerateMissing => ("E", 04_024),
+            EpisodeGenerateCountBad => ("E", 04_025),
+            EpisodeImportContentBad => ("E", 04_026),
+            EpisodeImportTypeBad => ("E", 04_027),
+            EpisodeReorderFailed => ("E", 04_028),
 
             JobNotFound => ("E", 05_001),
             JobBadState => ("E", 05_002),
@@ -204,6 +248,10 @@ impl ErrorCode {
             AiTimeout => ("E", 07_002),
             AiBadFormat => ("E", 07_003),
             AiAuthFailed => ("E", 07_004),
+            AiBackendMissing => ("E", 07_005),
+            AiRequestFailed => ("E", 07_006),
+            AiBadStatus => ("E", 07_007),
+            AiJsonParseFailed => ("E", 07_008),
 
             // ===== 08 外部依赖 =====
             // ===== 08_001 - 08_003 数据库 =====
@@ -241,9 +289,12 @@ mod tests {
             AiBackendNotFound, AiBackendNameDuplicated, AiBackendCategoryInvalid, AiBackendFieldsMissing,
             ProjectNotFound, ProjectNameInvalid, ProjectSlugDuplicated, ProjectBadState,
             StoryNotFound, StoryDuplicated, StoryBadState, SceneNotFound, CharacterNotFound,
+            EpisodeNotFound, EpisodeTitleInvalid, EpisodeBadMove, EpisodeGenerateMissing,
+            EpisodeGenerateCountBad, EpisodeImportContentBad, EpisodeImportTypeBad, EpisodeReorderFailed,
             JobNotFound, JobBadState, JobCancelFailed, JobProgressError,
             FileTooLarge, FileTypeNotAllowed, FileNotFound, FileWriteFailed,
             AiRateLimited, AiTimeout, AiBadFormat, AiAuthFailed,
+            AiBackendMissing, AiRequestFailed, AiBadStatus, AiJsonParseFailed,
             DatabaseError, DatabaseQueryError, DatabaseConstraint,
             ObjectStorageError, MqError, RenderNodeError,
         ];

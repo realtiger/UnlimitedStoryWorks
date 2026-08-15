@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import {
@@ -15,6 +15,7 @@ import {
   FolderIcon,
   FolderCheckIcon,
   ArrowRightDoubleIcon,
+  InformationCircleIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
@@ -72,6 +73,7 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 
@@ -134,6 +136,7 @@ export default function AIPage() {
   const [activeCategory, setActiveCategory] = useState<AiCategory>('text')
   const [editTarget, setEditTarget] = useState<AiBackendConfig | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AiBackendConfig | null>(null)
+  const [promptTarget, setPromptTarget] = useState<AiBackendConfig | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
 
   // ---- 查询 ----
@@ -429,6 +432,18 @@ export default function AIPage() {
                             <HugeiconsIcon icon={Edit02Icon} />
                             <span className="sr-only">编辑</span>
                           </Button>
+                          {cfg.category === 'text' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setPromptTarget(cfg)}
+                              className="gap-1 text-[11px] text-amber-700 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-400 hover:bg-amber-500/10"
+                            >
+                              <HugeiconsIcon icon={SparklesIcon} className="size-3.5" />
+                              <span className="hidden sm:inline">Prompt 模板</span>
+                              <span className="sm:hidden">Prompt</span>
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -492,7 +507,424 @@ export default function AIPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 独立 Prompt 模板编辑 Dialog */}
+      <PromptTemplateDialog
+        open={promptTarget !== null}
+        target={promptTarget}
+        onOpenChange={(o) => {
+          if (!o) setPromptTarget(null)
+        }}
+        onSaveSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['ai-backends'] })
+        }}
+      />
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 自定义 Prompt 模板子 Dialog（专门用于编辑 4 个 Prompt 字段）
+// ---------------------------------------------------------------------------
+
+interface PromptTemplateValues {
+  usr_prompt_genbyp_system: string
+  usr_prompt_genbyp_user: string
+  usr_prompt_genbyi_system: string
+  usr_prompt_genbyi_user: string
+}
+
+function splitPromptFromExtra(
+  extraJson: string | null | undefined,
+): { values: PromptTemplateValues; otherExtra: Record<string, unknown> } {
+  const empty: PromptTemplateValues = {
+    usr_prompt_genbyp_system: '',
+    usr_prompt_genbyp_user: '',
+    usr_prompt_genbyi_system: '',
+    usr_prompt_genbyi_user: '',
+  }
+  if (!extraJson) return { values: empty, otherExtra: {} }
+  let parsed: Record<string, unknown> | null = null
+  try {
+    parsed = JSON.parse(extraJson) as Record<string, unknown>
+  } catch {
+    return { values: empty, otherExtra: {} }
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    return { values: empty, otherExtra: {} }
+  }
+  const getParts = (
+    key: 'usr_prompt_genbyp' | 'usr_prompt_genbyi',
+  ): { system: string; user: string } => {
+    const v = parsed![key]
+    if (typeof v === 'string') return { system: v, user: '' }
+    if (v && typeof v === 'object') {
+      const o = v as Record<string, unknown>
+      return {
+        system: typeof o.system === 'string' ? o.system : '',
+        user: typeof o.user === 'string' ? o.user : '',
+      }
+    }
+    return { system: '', user: '' }
+  }
+  const byp = getParts('usr_prompt_genbyp')
+  const byi = getParts('usr_prompt_genbyi')
+  const clone = { ...parsed }
+  delete clone.usr_prompt_genbyp
+  delete clone.usr_prompt_genbyi
+  return {
+    values: {
+      usr_prompt_genbyp_system: byp.system,
+      usr_prompt_genbyp_user: byp.user,
+      usr_prompt_genbyi_system: byi.system,
+      usr_prompt_genbyi_user: byi.user,
+    },
+    otherExtra: clone,
+  }
+}
+
+function buildPromptExtra(
+  otherExtra: Record<string, unknown>,
+  v: PromptTemplateValues,
+): string | undefined {
+  const merged: Record<string, unknown> = { ...otherExtra }
+  const s1 = v.usr_prompt_genbyp_system.trim()
+  const u1 = v.usr_prompt_genbyp_user.trim()
+  const s2 = v.usr_prompt_genbyi_system.trim()
+  const u2 = v.usr_prompt_genbyi_user.trim()
+  if (s1 || u1) {
+    const obj: Record<string, string> = {}
+    if (s1) obj.system = s1
+    if (u1) obj.user = u1
+    merged.usr_prompt_genbyp =
+      Object.keys(obj).length === 1 && obj.system
+        ? obj.system
+        : (obj as unknown as Record<string, unknown>)
+  }
+  if (s2 || u2) {
+    const obj: Record<string, string> = {}
+    if (s2) obj.system = s2
+    if (u2) obj.user = u2
+    merged.usr_prompt_genbyi =
+      Object.keys(obj).length === 1 && obj.system
+        ? obj.system
+        : (obj as unknown as Record<string, unknown>)
+  }
+  if (Object.keys(merged).length === 0) return undefined
+  return JSON.stringify(merged, null, 2)
+}
+
+function PromptTemplateDialog({
+  open,
+  target,
+  onOpenChange,
+  onSaveSuccess,
+}: {
+  open: boolean
+  target: AiBackendConfig | null
+  onOpenChange: (o: boolean) => void
+  onSaveSuccess: () => void
+}) {
+  const [prevId, setPrevId] = useState<number | null>(null)
+  const [otherExtra, setOtherExtra] = useState<Record<string, unknown>>({})
+  const [saving, setSaving] = useState(false)
+  const {
+    register,
+    reset,
+    handleSubmit,
+    watch,
+  } = useForm<PromptTemplateValues>({
+    defaultValues: {
+      usr_prompt_genbyp_system: '',
+      usr_prompt_genbyp_user: '',
+      usr_prompt_genbyi_system: '',
+      usr_prompt_genbyi_user: '',
+    },
+  })
+
+  useEffect(() => {
+    if (open && target) {
+      const uid = target.id ?? 0
+      if (uid !== prevId) {
+        setPrevId(uid)
+        const { values, otherExtra: rest } = splitPromptFromExtra(target.extra)
+        setOtherExtra(rest)
+        reset(values)
+      }
+    }
+  }, [open, target, prevId, reset])
+
+  const wBypSys = watch('usr_prompt_genbyp_system')
+  const wBypUser = watch('usr_prompt_genbyp_user')
+  const wByiSys = watch('usr_prompt_genbyi_system')
+  const wByiUser = watch('usr_prompt_genbyi_user')
+  const filledCount = [wBypSys, wBypUser, wByiSys, wByiUser].filter(
+    (s) => s.trim().length > 0,
+  ).length
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="!w-[min(1100px,94vw)] !max-w-[min(1100px,94vw)] !h-[min(820px,88vh)] !max-h-[min(820px,88vh)] min-h-[520px] flex flex-col overflow-hidden p-6 text-sm">
+        <DialogHeader>
+          <DialogTitle className="text-lg flex items-center gap-2">
+            <HugeiconsIcon icon={SparklesIcon} className="text-amber-500" />
+            自定义 Prompt 模板 · {target?.name ?? '未命名配置'}
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed">
+            针对这个推理后端，单独定制 system / user prompt。
+            <span className="text-foreground"> 留空的字段将继续使用系统默认</span>，
+            只有你填写了的才会覆盖。当前已填写{' '}
+            <span className="font-medium text-amber-700 dark:text-amber-400">
+              {filledCount} / 4
+            </span>{' '}
+            个模板字段。
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          className="flex flex-1 flex-col gap-5 overflow-y-auto pr-2 pt-2"
+          onSubmit={handleSubmit(async (raw) => {
+            if (!target?.id) return
+            const finalExtra = buildPromptExtra(otherExtra, raw)
+            setSaving(true)
+            try {
+              await aiApi.update(target.id, { extra: finalExtra })
+              toast.add({
+                type: 'success',
+                title: '自定义 Prompt 模板已保存',
+                description: finalExtra
+                  ? '下一次剧本生成时将优先使用本模板'
+                  : '4 个模板均为空，已回退到系统默认 Prompt',
+              })
+              onSaveSuccess()
+              onOpenChange(false)
+            } finally {
+              setSaving(false)
+            }
+          })}
+        >
+          <Tabs defaultValue="by-prompt" className="flex-1 flex flex-col">
+            <TabsList className="grid h-9 w-full grid-cols-2 text-xs">
+              <TabsTrigger value="by-prompt">模式 A · 故事大纲生成</TabsTrigger>
+              <TabsTrigger value="by-import">模式 B · 小说导入改编</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="by-prompt" className="flex-1 space-y-3 pt-3">
+              <Alert variant="default" className="border-amber-400/50 bg-amber-50/60 dark:bg-amber-950/20">
+                <AlertTitle className="flex items-center gap-1.5 text-xs">
+                  <HugeiconsIcon icon={InformationCircleIcon} className="size-3.5" />
+                  可用变量（直接写到模板里，例如 {'{outline}'}）
+                </AlertTitle>
+                <AlertDescription className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] leading-5">
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{outline}'}
+                    </code>{' '}
+                    故事大纲（原文）
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{style}'}
+                    </code>{' '}
+                    风格：现代 / 古风 / 奇幻 / 日常（中文）
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{genre}'}
+                    </code>{' '}
+                    类型：剧情 / 喜剧 / 冒险（中文）
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{count}'}
+                    </code>{' '}
+                    生成集数（1-100）
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  System Prompt 覆盖
+                  <span className="ml-1.5 font-normal">
+                    （留空 → 系统默认；填写 → 完全替换系统默认 system）
+                  </span>
+                </label>
+                <Textarea
+                  {...register('usr_prompt_genbyp_system')}
+                  value={wBypSys}
+                  rows={11}
+                  placeholder={[
+                    '示例：你是一位资深漫剧剧本总编剧，擅长以三幕式结构把 {style} 类型的 {genre} 故事展开成 {count} 集。',
+                    '请严格基于以下大纲生成：{outline}。要求只返回长度 = {count} 的 JSON 数组，每项 {title, content, duration_seconds}。',
+                  ].join('\n')}
+                  className="min-h-[260px] p-3 font-mono text-[12px] leading-relaxed"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  User Prompt 覆盖
+                  <span className="ml-1.5 font-normal">
+                    （留空 → 系统默认；填写 → 完全替换系统默认 user）
+                  </span>
+                </label>
+                <Textarea
+                  {...register('usr_prompt_genbyp_user')}
+                  value={wBypUser}
+                  rows={6}
+                  placeholder={[
+                    '示例：',
+                    '故事大纲：{outline}',
+                    '风格：{style} / 类型：{genre} / 集数：{count}',
+                    '请根据以上信息生成 {count} 集剧本，并以 JSON 数组返回。',
+                  ].join('\n')}
+                  className="min-h-[160px] p-3 font-mono text-[12px] leading-relaxed"
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="by-import" className="flex-1 space-y-3 pt-3">
+              <Alert variant="default" className="border-amber-400/50 bg-amber-50/60 dark:bg-amber-950/20">
+                <AlertTitle className="flex items-center gap-1.5 text-xs">
+                  <HugeiconsIcon icon={InformationCircleIcon} className="size-3.5" />
+                  可用变量（直接写到模板里，例如 {'{body}'}）
+                </AlertTitle>
+                <AlertDescription className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] leading-5">
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{file_ext}'}
+                    </code>{' '}
+                    文件扩展名：txt / md / markdown
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{chars}'}
+                    </code>{' '}
+                    正文字数（汉字数）
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{style_hint}'}
+                    </code>{' '}
+                    风格提示（无则写“自行判断”）
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{genre_hint}'}
+                    </code>{' '}
+                    类型提示（无则写“自行判断”）
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{est_count}'}
+                    </code>{' '}
+                    建议集数（原文字数 / 2500，clamp 1-100）
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{style_line}'}
+                    </code>{' '}
+                    预渲染好的「风格：xxx」整行中文
+                  </div>
+                  <div className="col-span-2">
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{body}'}
+                    </code>{' '}
+                    小说正文全文（注意：放到 system 里会很容易触发超长，一般只放到 user prompt）
+                  </div>
+                  <div>
+                    <code className="rounded bg-foreground/5 px-1 py-0.5 font-mono">
+                      {'{genre_line}'}
+                    </code>{' '}
+                    预渲染好的「类型：xxx」整行中文
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  System Prompt 覆盖
+                  <span className="ml-1.5 font-normal">
+                    （留空 → 系统默认；填写 → 完全替换系统默认 system）
+                  </span>
+                </label>
+                <Textarea
+                  {...register('usr_prompt_genbyi_system')}
+                  value={wByiSys}
+                  rows={11}
+                  placeholder={[
+                    '示例：你是一位漫剧剧本改编总编剧，擅长把长篇小说压缩为节奏紧凑的剧集，保留主线与名场面。',
+                    '风格：{style_line}；类型：{genre_line}；建议拆分为 {est_count} 集（±20%）。',
+                    '每集字段：title(3-12 字，不要“第X集”) / content(≥600 字，场景+动作+对白) / duration_seconds(180-600)。',
+                    '必须只返回 JSON 数组，直接以 [ 开头，] 结尾，不要 markdown 或解释。',
+                  ].join('\n')}
+                  className="min-h-[260px] p-3 font-mono text-[12px] leading-relaxed"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  User Prompt 覆盖
+                  <span className="ml-1.5 font-normal">
+                    （留空 → 系统默认；一般把 {'{body}'} 放到这里）
+                  </span>
+                </label>
+                <Textarea
+                  {...register('usr_prompt_genbyi_user')}
+                  value={wByiUser}
+                  rows={6}
+                  placeholder={[
+                    '示例：',
+                    '文件类型：{file_ext}，字数约 {chars}，风格提示：{style_hint}，类型提示：{genre_hint}',
+                    '建议拆成 {est_count} 集左右。小说正文如下：',
+                    '{body}',
+                  ].join('\n')}
+                  className="min-h-[160px] p-3 font-mono text-[12px] leading-relaxed"
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <details className="rounded-lg border bg-muted/20 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+            <summary className="cursor-pointer select-none font-medium text-foreground/80">
+              预览合并后写入 backend.extra 的 JSON（只读）
+            </summary>
+            <pre className="mt-2 max-h-[160px] overflow-auto whitespace-pre-wrap break-all rounded-md bg-foreground/5 p-2 font-mono text-[11px] text-foreground/80">
+              {buildPromptExtra(otherExtra, {
+                usr_prompt_genbyp_system: wBypSys,
+                usr_prompt_genbyp_user: wBypUser,
+                usr_prompt_genbyi_system: wByiSys,
+                usr_prompt_genbyi_user: wByiUser,
+              }) ?? '(empty → 不写 extra)'}
+            </pre>
+          </details>
+
+          <DialogFooter>
+            <DialogClose
+              render={(props: any) => (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 px-4 text-sm"
+                  {...props}
+                  disabled={saving}
+                >
+                  取消
+                </Button>
+              )}
+            />
+            <Button
+              type="submit"
+              className="h-9 px-5 text-sm"
+              disabled={saving}
+            >
+              {saving ? '保存中...' : '保存 Prompt 模板'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -526,7 +958,7 @@ function BackendDialog({
     reset,
     watch,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<{
     name: string
     category: AiCategory
@@ -576,24 +1008,52 @@ function BackendDialog({
   }
 
   const activeCat = watch('category')
+  const watchExtra = watch('extra')
+
+  const normalizeExtra = (rawExtra: string): string | undefined => {
+    const t = rawExtra.trim()
+    if (!t) return undefined
+    try {
+      const p = JSON.parse(t) as unknown
+      if (
+        p === null ||
+        (typeof p === 'object' &&
+          !Array.isArray(p) &&
+          Object.keys(p as Record<string, unknown>).length === 0)
+      ) {
+        return undefined
+      }
+      return JSON.stringify(p, null, 2)
+    } catch {
+      // 不是合法 JSON → 包到一个 __raw_extra key 里避免丢数据
+      return JSON.stringify({ __raw_extra: t }, null, 2)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!w-[min(900px,92vw)] !max-w-[min(900px,92vw)] min-w-[640px] p-6 text-sm">
+      <DialogContent className="!w-[min(820px,92vw)] !max-w-[min(820px,92vw)] min-w-[600px] p-6 text-sm">
         <DialogHeader>
           <DialogTitle className="text-lg">
             {isEdit ? '编辑 AI 配置' : '新增 AI 配置'}
           </DialogTitle>
           <DialogDescription className="text-sm">
             {isEdit
-              ? '修改推理后端的名称、地址、模型名、API Key 等信息。'
+              ? '修改推理后端的名称、地址、模型名、API Key 等基本信息。'
               : '新增一个全局 AI 推理后端配置，配置后所有项目都可以使用。'}
+            {isEdit && activeCat === 'text' && (
+              <span className="mt-1 block text-xs text-amber-700 dark:text-amber-400">
+                文本类后端的自定义 Prompt 模板，请回到卡片右侧点击「Prompt 模板」按钮单独编辑。
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <form
           className="flex flex-col gap-5 pt-2"
           onSubmit={handleSubmit(async (raw) => {
+            const cleanWs = (s?: string | null) => (s ?? '').replace(/\s+/g, '')
+            const finalExtra = normalizeExtra(raw.extra)
             if (isEdit) {
               const req: UpdateAiBackendReq = {}
               if (raw.name !== undefined) req.name = raw.name.trim() || undefined
@@ -602,9 +1062,9 @@ function BackendDialog({
                 req.base_url = raw.base_url.trim()
               if (raw.model_name !== undefined)
                 req.model_name = raw.model_name.trim() || undefined
-              if (raw.api_key !== undefined) req.api_key = raw.api_key.trim()
+              if (raw.api_key !== undefined) req.api_key = cleanWs(raw.api_key)
               req.is_default = raw.is_default
-              if (raw.extra.trim()) req.extra = raw.extra.trim()
+              if (finalExtra) req.extra = finalExtra
               await onUpdate(target.id, req)
             } else {
               const req: CreateAiBackendReq = {
@@ -612,10 +1072,10 @@ function BackendDialog({
                 category: raw.category,
                 base_url: raw.base_url.trim(),
                 model_name: raw.model_name.trim(),
-                api_key: raw.api_key.trim(),
+                api_key: cleanWs(raw.api_key),
                 is_default: raw.is_default,
               }
-              if (raw.extra.trim()) req.extra = raw.extra.trim()
+              if (finalExtra) req.extra = finalExtra
               await onCreate(req)
             }
           })}
@@ -781,9 +1241,30 @@ function BackendDialog({
               className="p-3 font-mono text-sm leading-relaxed"
             />
             <p className="text-xs text-muted-foreground">
-              用于存放需要透传给 SDK 的自定义参数，调用时会原样读取。
+              用于存放需要透传给 SDK 的自定义参数（JSON 对象）。
+              {activeCat === 'text' && (
+                <>
+                  {' '}
+                  自定义 Prompt 模板请回到卡片右侧点击「Prompt 模板」按钮单独编辑，
+                  不在这里填写。
+                </>
+              )}
             </p>
           </div>
+
+          {watchExtra.trim() && (
+            <details className="rounded-lg border bg-muted/20 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+              <summary className="cursor-pointer select-none font-medium text-foreground/80">
+                预览将写入 backend.extra 的 JSON（只读）
+              </summary>
+              <pre className="mt-2 max-h-[200px] overflow-auto whitespace-pre-wrap break-all rounded-md bg-foreground/5 p-2 font-mono text-[11px] text-foreground/80">
+                {(() => {
+                  const preview = normalizeExtra(watchExtra)
+                  return preview ?? '(empty)'
+                })()}
+              </pre>
+            </details>
+          )}
 
           <DialogFooter className="mt-1">
             <DialogClose
@@ -801,9 +1282,9 @@ function BackendDialog({
             <Button
               type="submit"
               className="h-9 px-4 text-sm"
-              disabled={submitting || isSubmitting}
+              disabled={submitting}
             >
-              {submitting || isSubmitting
+              {submitting
                 ? '保存中...'
                 : isEdit
                   ? '保存修改'

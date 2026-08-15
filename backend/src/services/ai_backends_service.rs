@@ -199,6 +199,30 @@ fn trim_required(
     Ok(v)
 }
 
+fn clean_api_key(
+    value: Option<&str>,
+    max_len: usize,
+) -> Result<String, crate::common::error::AppError> {
+    let cleaned: String = value
+        .unwrap_or("")
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    if cleaned.is_empty() {
+        return Err(err(
+            ErrorCode::AiBackendFieldsMissing,
+            format!("字段 api_key 不能为空"),
+        ));
+    }
+    if cleaned.len() > max_len {
+        return Err(err(
+            ErrorCode::AiBackendFieldsMissing,
+            format!("字段 api_key 长度不能超过 {max_len}"),
+        ));
+    }
+    Ok(cleaned)
+}
+
 fn int_to_bool(i: i64) -> bool {
     i != 0
 }
@@ -399,7 +423,7 @@ pub async fn create(
     let name = trim_required(Some(&req.name), "name", 120)?;
     let base_url = trim_required(Some(&req.base_url), "base_url", 1024)?;
     let model_name = trim_required(Some(&req.model_name), "model_name", 200)?;
-    let api_key = trim_required(Some(&req.api_key), "api_key", 2048)?;
+    let api_key = clean_api_key(Some(&req.api_key), 2048)?;
     let extra = req.extra.filter(|s| !s.trim().is_empty());
 
     let now = now_iso();
@@ -462,7 +486,7 @@ pub async fn update(
         None => None,
     };
     let new_api = match req.api_key {
-        Some(a) => Some(trim_required(Some(&a), "api_key", 2048)?),
+        Some(a) => Some(clean_api_key(Some(&a), 2048)?),
         None => None,
     };
     let new_default = req.is_default;

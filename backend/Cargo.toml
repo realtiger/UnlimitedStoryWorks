@@ -23,6 +23,7 @@ tokio = { version = "1.53.1", features = [
     "sync",
     "time",
 ] }
+tokio-stream = { version = "0.1", features = ["sync"] }
 tower = "0.5"
 tower-http = { version = "0.7.0", features = [
     "cors",
@@ -101,3 +102,9 @@ sqlx = { version = "0.8.6", features = [
 # 10. 工具
 # ============================================================================
 derive_more = { version = "1", features = ["full"] }
+
+# ============================================================================
+# 11. HTTP Client（调用外部 AI 推理后端 / OpenAI 兼容 chat completions）
+# ============================================================================
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "multipart"] }
+futures-util = "0.3"

@@ -78,10 +78,13 @@ import {
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 
-import scriptsApi from '@/services/scripts/api'
+import scriptsApi, { type GenerateHeartbeat } from '@/services/scripts/api'
+import aiApi from '@/services/ai/api'
 import {
+  GENRE_VALUE_TO_LABEL,
   STORY_GENRE_OPTIONS,
   STORY_STYLE_OPTIONS,
+  STYLE_VALUE_TO_LABEL,
   type CreateEpisodeReq,
   type Episode,
   type GenerateEpisodesByImportReq,
@@ -92,6 +95,7 @@ import {
   type UpdateEpisodeReq,
 } from '@/services/scripts/types'
 import { useProjectStore } from '@/store/useProjectStore'
+import type { AiBackendConfig } from '@/services/ai/types'
 
 // ---------------------------------------------------------------------------
 // 工具
@@ -126,6 +130,7 @@ export default function ScriptsPage() {
   const [editTarget, setEditTarget] = useState<Episode | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Episode | null>(null)
   const [genOpen, setGenOpen] = useState(false)
+  const [genProgress, setGenProgress] = useState<GenerateHeartbeat | null>(null)
 
   // ---- 查询 ----
   const {
@@ -184,14 +189,24 @@ export default function ScriptsPage() {
 
   // ---- 自动生成 ----
   const genMut = useMutation({
-    mutationFn: (req: GenerateEpisodesByPromptReq | GenerateEpisodesByImportReq) =>
-      'file_content' in req
-        ? scriptsApi.generateByImport(req)
-        : scriptsApi.generateByPrompt(req),
+    mutationFn: (req: GenerateEpisodesByPromptReq | GenerateEpisodesByImportReq) => {
+      setGenProgress({ elapsed_ms: 0, stage: 'prepare_prompt' })
+      return 'file_ext' in req
+        ? scriptsApi.generateByImportStream(req as GenerateEpisodesByImportReq, (hb) =>
+            setGenProgress(hb),
+          )
+        : scriptsApi.generateByPromptStream(req as GenerateEpisodesByPromptReq, (hb) =>
+            setGenProgress(hb),
+          )
+    },
     onSuccess: () => {
-      toast.add({ type: 'success', title: '生成任务已提交' })
+      toast.add({ type: 'success', title: '生成任务已提交并写入剧集列表' })
       queryClient.invalidateQueries({ queryKey: ['episodes', projectId] })
+      setGenProgress(null)
       setGenOpen(false)
+    },
+    onError: () => {
+      setGenProgress(null)
     },
   })
 
@@ -239,11 +254,12 @@ export default function ScriptsPage() {
             submitting={genMut.isPending}
             projectId={projectId}
             onSubmit={async (req) => await genMut.mutateAsync(req)}
+            progress={genProgress}
           />
           <Button
             size="sm"
             disabled={!hasProject || createMut.isPending}
-            onClick={() => setEditTarget({} as any)}
+            onClick={() => setEditTarget({ id: 0 } as Episode)}
           >
             <HugeiconsIcon icon={PlusSignCircleIcon} data-icon="inline-start" />
             添加一集
@@ -309,6 +325,7 @@ export default function ScriptsPage() {
                 submitting={genMut.isPending}
                 projectId={projectId}
                 onSubmit={async (req) => await genMut.mutateAsync(req)}
+                progress={genProgress}
                 inline
               />
               <Button
@@ -479,6 +496,7 @@ interface GenerateFormByPrompt {
   style: StoryStyle
   genre: StoryGenre
   episode_count: number
+  ai_backend_id: number | null
 }
 
 interface GenerateFormByImport {
@@ -487,6 +505,7 @@ interface GenerateFormByImport {
   style: StoryStyle
   genre: StoryGenre
   episode_count: number
+  ai_backend_id: number | null
 }
 
 function GenerateDialog({
@@ -496,6 +515,7 @@ function GenerateDialog({
   submitting,
   projectId,
   onSubmit,
+  progress,
   inline = false,
 }: {
   open: boolean
@@ -503,14 +523,81 @@ function GenerateDialog({
   disabled?: boolean
   submitting: boolean
   projectId: number | null
-  onSubmit: (req: any) => Promise<unknown>
+  onSubmit: (req: GenerateEpisodesByPromptReq | GenerateEpisodesByImportReq) => Promise<unknown>
+  progress?: GenerateHeartbeat | null
   inline?: boolean
 }) {
   const [mode, setMode] = useState<GenerateMode>('prompt')
   const [localOpen, setLocalOpen] = useState(open)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // keep localOpen synced with open prop
+  const StageLabel: Record<GenerateHeartbeat['stage'], string> = {
+    prepare_prompt: '正在准备系统 Prompt …',
+    calling_llm: '正在调用大模型推理生成剧本 …',
+    bulk_create: '正在批量写入剧集列表 …',
+  }
+  function ProgressBox({
+    progress,
+    className,
+  }: {
+    progress?: GenerateHeartbeat | null
+    className?: string
+  }) {
+    const p = progress?.progress ?? 0
+    const stage = progress ? StageLabel[progress.stage] : '初始化任务 …'
+    const seconds = progress
+      ? (progress.elapsed_ms / 1000).toFixed(progress.elapsed_ms >= 60_000 ? 0 : 1)
+      : '0.0'
+    return (
+      <div className={cn('rounded-lg border border-muted bg-muted/30 p-4', className)}>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <span className="font-medium text-foreground">{stage}</span>
+          </div>
+          <div>已耗时 {seconds}s</div>
+        </div>
+        <div className="mt-3">
+          <Progress value={Math.min(99, p)} />
+        </div>
+        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+          <div>
+            {progress?.stage === 'calling_llm'
+              ? '生成时间随集数、大模型响应速度而定，每 3 秒发送一次心跳，连接不会中断'
+              : progress?.stage === 'bulk_create'
+                ? '将生成的剧集批量写入数据库'
+                : '初始化 Prompt 模板与后端配置'}
+          </div>
+          <div className="font-mono tabular-nums">{Math.min(99, p)}%</div>
+        </div>
+      </div>
+    )
+  }
+
+  const { data: textBackends, isFetching: isBackendsLoading } = useQuery<
+    AiBackendConfig[],
+    unknown
+  >({
+    queryKey: ['ai-backends', 'text'],
+    queryFn: async () => {
+      try {
+        return await aiApi.list({ category: 'text', limit: 100 })
+      } catch {
+        return []
+      }
+    },
+    enabled: localOpen,
+    staleTime: 30_000,
+  })
+
+  const defaultBackend = useMemo(
+    () => textBackends?.find((b) => b.is_default),
+    [textBackends],
+  )
+
   if (localOpen !== open) setLocalOpen(open)
 
   const promptForm = useForm<GenerateFormByPrompt>({
@@ -518,7 +605,8 @@ function GenerateDialog({
       story_outline: '',
       style: 'modern',
       genre: 'drama',
-      episode_count: 12,
+      episode_count: 3,
+      ai_backend_id: null,
     },
   })
 
@@ -528,7 +616,8 @@ function GenerateDialog({
       file_content: '',
       style: 'modern',
       genre: 'drama',
-      episode_count: 12,
+      episode_count: 3,
+      ai_backend_id: null,
     },
   })
 
@@ -542,9 +631,21 @@ function GenerateDialog({
     reader.readAsText(file)
   }
 
+  const fileExtOf = (name: string) => {
+    const idx = name.lastIndexOf('.')
+    return idx >= 0 ? name.slice(idx + 1).toLowerCase() : 'txt'
+  }
+
   const submitPrompt = promptForm.handleSubmit(async (raw) => {
     if (!projectId) return
-    const req = { project_id: projectId, ...raw }
+    const req: GenerateEpisodesByPromptReq = {
+      project_id: projectId,
+      outline: raw.story_outline,
+      style: STYLE_VALUE_TO_LABEL[raw.style],
+      genre: GENRE_VALUE_TO_LABEL[raw.genre],
+      count: raw.episode_count,
+      ai_backend_id: raw.ai_backend_id ?? undefined,
+    }
     try {
       await onSubmit(req)
       promptForm.reset()
@@ -559,7 +660,14 @@ function GenerateDialog({
       toast.add({ type: 'error', title: '请先上传小说文件' })
       return
     }
-    const req = { project_id: projectId, ...raw }
+    const req: GenerateEpisodesByImportReq = {
+      project_id: projectId,
+      file_ext: fileExtOf(raw.file_name || 'novel.txt'),
+      content: raw.file_content,
+      style_hint: STYLE_VALUE_TO_LABEL[raw.style],
+      genre_hint: GENRE_VALUE_TO_LABEL[raw.genre],
+      ai_backend_id: raw.ai_backend_id ?? undefined,
+    }
     try {
       await onSubmit(req)
       importForm.reset()
@@ -651,10 +759,19 @@ function GenerateDialog({
                 styleValue={promptForm.watch('style')}
                 genreValue={promptForm.watch('genre')}
                 episodeCount={promptForm.watch('episode_count')}
+                textBackends={textBackends ?? []}
+                defaultBackend={defaultBackend}
+                isBackendsLoading={isBackendsLoading}
+                aiBackendId={promptForm.watch('ai_backend_id')}
+                onAiBackendChange={(v) => promptForm.setValue('ai_backend_id', v)}
                 onStyleChange={(v) => promptForm.setValue('style', v as StoryStyle)}
                 onGenreChange={(v) => promptForm.setValue('genre', v as StoryGenre)}
                 onCountChange={(v) => promptForm.setValue('episode_count', v)}
               />
+
+              {submitting && (
+                <ProgressBox progress={progress} className="mt-5" />
+              )}
 
               <DialogFooter className="mt-2">
                 <DialogClose
@@ -733,10 +850,20 @@ function GenerateDialog({
                 styleValue={importForm.watch('style')}
                 genreValue={importForm.watch('genre')}
                 episodeCount={importForm.watch('episode_count')}
+                textBackends={textBackends ?? []}
+                defaultBackend={defaultBackend}
+                isBackendsLoading={isBackendsLoading}
+                aiBackendId={importForm.watch('ai_backend_id')}
+                onAiBackendChange={(v) => importForm.setValue('ai_backend_id', v)}
                 onStyleChange={(v) => importForm.setValue('style', v as StoryStyle)}
                 onGenreChange={(v) => importForm.setValue('genre', v as StoryGenre)}
                 onCountChange={(v) => importForm.setValue('episode_count', v)}
+                showEpisodeCount={false}
               />
+
+              {submitting && (
+                <ProgressBox progress={progress} className="mt-5" />
+              )}
 
               <DialogFooter className="mt-2">
                 <DialogClose
@@ -769,94 +896,177 @@ function GenerateDialog({
 }
 
 // ---------------------------------------------------------------------------
-// 共用：风格、类型、集数选择
+// 共用：风格、类型、集数选择 + 本次推理模型选择
 // ---------------------------------------------------------------------------
 
 function StyleAndGenreAndCount({
   styleValue,
   genreValue,
   episodeCount,
+  textBackends,
+  defaultBackend,
+  isBackendsLoading,
+  aiBackendId,
+  onAiBackendChange,
   onStyleChange,
   onGenreChange,
   onCountChange,
+  showEpisodeCount = true,
 }: {
   styleValue: StoryStyle
   genreValue: StoryGenre
   episodeCount: number
+  textBackends: AiBackendConfig[]
+  defaultBackend?: AiBackendConfig
+  isBackendsLoading?: boolean
+  aiBackendId: number | null
+  onAiBackendChange: (v: number | null) => void
   onStyleChange: (v: StoryStyle) => void
   onGenreChange: (v: StoryGenre) => void
   onCountChange: (v: number) => void
+  showEpisodeCount?: boolean
 }) {
-  const epCountItems = useMemo(
-    () => [6, 12, 16, 20, 24, 30, 40, 50].map((n) => ({ value: String(n), label: `${n} 集` })),
-    [],
-  )
+  const backendItems = useMemo(() => {
+    const arr: { value: string; label: string; hint?: string }[] = [
+      {
+        value: '',
+        label: defaultBackend ? `默认（${defaultBackend.name} · ${defaultBackend.model_name}）` : '默认后端',
+        hint: defaultBackend ? '使用 text 类当前 is_default 的配置' : '未配置默认，请前往 AI 配置',
+      },
+    ]
+    for (const b of textBackends ?? []) {
+      if (defaultBackend && b.id === defaultBackend.id) continue
+      arr.push({
+        value: String(b.id),
+        label: `${b.name} · ${b.model_name}${b.is_default ? '（默认）' : ''}`,
+        hint: b.base_url,
+      })
+    }
+    return arr
+  }, [textBackends, defaultBackend])
+  const currentBackendValue = aiBackendId ? String(aiBackendId) : ''
+  const currentBackendLabel = backendItems.find((it) => it.value === currentBackendValue)?.label
+
+  const currentStyleLabel = STORY_STYLE_OPTIONS.find((o) => o.value === styleValue)?.label
+  const currentGenreLabel = STORY_GENRE_OPTIONS.find((o) => o.value === genreValue)?.label
+
+  const topColSpan = showEpisodeCount ? 'sm:col-span-6' : 'sm:col-span-6'
+
   return (
-    <div className="grid gap-5 sm:grid-cols-12">
-      <div className="space-y-2 sm:col-span-4">
-        <label className="text-sm font-medium">故事风格</label>
-        <Select
-          items={STORY_STYLE_OPTIONS}
-          value={styleValue}
-          onValueChange={(v) => v && onStyleChange(v as StoryStyle)}
-        >
-          <SelectTrigger className="h-9 w-full px-3 text-sm">
-            <SelectValue placeholder="选择风格" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {STORY_STYLE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+    <div className="space-y-5">
+      <div className="grid gap-5 sm:grid-cols-12">
+        <div className={`space-y-2 ${topColSpan}`}>
+          <label className="text-sm font-medium">故事风格</label>
+          <Select
+            value={styleValue}
+            onValueChange={(v) => v && onStyleChange(v as StoryStyle)}
+          >
+            <SelectTrigger className="h-9 w-full px-3 text-sm">
+              <SelectValue placeholder="选择风格">{currentStyleLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {STORY_STYLE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className={`space-y-2 ${topColSpan}`}>
+          <label className="text-sm font-medium">类型</label>
+          <Select
+            value={genreValue}
+            onValueChange={(v) => v && onGenreChange(v as StoryGenre)}
+          >
+            <SelectTrigger className="h-9 w-full px-3 text-sm">
+              <SelectValue placeholder="选择类型">{currentGenreLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {STORY_GENRE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
       </div>
 
-      <div className="space-y-2 sm:col-span-4">
-        <label className="text-sm font-medium">类型</label>
-        <Select
-          items={STORY_GENRE_OPTIONS}
-          value={genreValue}
-          onValueChange={(v) => v && onGenreChange(v as StoryGenre)}
-        >
-          <SelectTrigger className="h-9 w-full px-3 text-sm">
-            <SelectValue placeholder="选择类型" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {STORY_GENRE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
+      {showEpisodeCount && (
+        <div className="space-y-2 sm:col-span-4">
+          <label className="text-sm font-medium">生成集数</label>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            step={1}
+            value={episodeCount}
+            onChange={(e) => {
+              const n = Number(e.target.value)
+              if (!Number.isFinite(n)) return
+              const clamped = Math.max(1, Math.min(100, Math.floor(n)))
+              onCountChange(clamped)
+            }}
+            className="h-9 px-3 text-sm"
+          />
+          <p className="text-[11px] leading-4 text-muted-foreground">
+            建议 1–100 集。实际生成受 LLM context 限制，过多集数可能被截断。
+          </p>
+        </div>
+      )}
 
-      <div className="space-y-2 sm:col-span-4">
-        <label className="text-sm font-medium">生成集数</label>
+      <div className="space-y-2">
+        <label className="text-sm font-medium flex items-center justify-between">
+          <span>模型推理配置</span>
+          <a
+            href="/ai-config"
+            className="text-[11px] font-normal text-muted-foreground underline-offset-2 hover:underline"
+          >
+            管理
+          </a>
+        </label>
         <Select
-          items={epCountItems}
-          value={String(episodeCount)}
-          onValueChange={(v) => onCountChange(Number(v))}
+          value={aiBackendId ? String(aiBackendId) : ''}
+          onValueChange={(v) =>
+            onAiBackendChange(v && v.length > 0 ? Number(v) : null)
+          }
         >
           <SelectTrigger className="h-9 w-full px-3 text-sm">
-            <SelectValue />
+            <SelectValue
+              placeholder={
+                isBackendsLoading ? '加载模型列表…' : '选择本次推理用哪个配置'
+              }
+            >
+              {currentBackendLabel}
+            </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-w-lg">
             <SelectGroup>
-              {epCountItems.map((n) => (
-                <SelectItem key={n.value} value={n.value}>
-                  {n.label}
+              {backendItems.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  <div className="flex flex-col gap-0.5 text-left">
+                    <div className="font-medium leading-5">{opt.label}</div>
+                    {opt.hint && (
+                      <div className="truncate text-[11px] leading-4 text-muted-foreground">
+                        {opt.hint}
+                      </div>
+                    )}
+                  </div>
                 </SelectItem>
               ))}
             </SelectGroup>
           </SelectContent>
         </Select>
+        <p className="text-[11px] leading-4 text-muted-foreground">
+          留空使用「文本生成」类的默认后端。如果某个后端下配置了自定义 Prompt 模板，会自动覆盖系统默认 Prompt。
+        </p>
       </div>
     </div>
   )
@@ -985,13 +1195,21 @@ function EpisodeEditDialog({
             )}
           </div>
 
-          <div className="space-y-2 flex flex-col flex-1 min-h-0">
+          <div className="space-y-2">
             <label className="text-sm font-medium">剧本内容（可选）</label>
             <Textarea
               {...register('content')}
               placeholder="本集完整剧本内容，包含场景、台词、动作说明等..."
-              className="flex-1 min-h-[320px] p-3 font-mono text-sm leading-relaxed"
+              className="min-h-[280px] resize-y p-3 font-mono text-sm leading-relaxed"
             />
+            {isEdit && (
+              <div className="rounded-lg bg-muted/40 p-4">
+                <Progress value={Math.min(100, (watch('content')?.length ?? 0) / 50)} />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  内容字数：{watch('content')?.length?.toLocaleString() ?? 0} 字
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
@@ -1017,15 +1235,6 @@ function EpisodeEditDialog({
               />
             </div>
           </div>
-
-          {isEdit && (
-            <div className="rounded-lg bg-muted/40 p-4">
-              <Progress value={Math.min(100, (watch('content')?.length ?? 0) / 50)} />
-              <p className="mt-2 text-xs text-muted-foreground">
-                内容字数：{watch('content')?.length?.toLocaleString() ?? 0} 字
-              </p>
-            </div>
-          )}
 
           <DialogFooter className="mt-1">
             <DialogClose
