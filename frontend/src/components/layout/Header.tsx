@@ -4,6 +4,7 @@ import {
   Sun02Icon,
   FolderIcon,
   ExchangeIcon,
+  Book02Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@/lib/utils'
@@ -55,11 +56,16 @@ export function Header({
   const navigate = useNavigate()
   const { theme, toggleTheme } = useLayoutStore()
   const storeNav = useMenuStore((s) => s.headerNav)
-  const { selectedProject } = useProjectStore()
+  const { selectedProject, selectedEpisode } = useProjectStore()
   const items = navItems ?? storeNav
 
   const handleProjectClick = () => {
     navigate('/projects')
+  }
+
+  const handleEpisodeClick = () => {
+    if (!selectedProject) return
+    navigate('/scripts')
   }
 
   return (
@@ -113,6 +119,54 @@ export function Header({
             <p>{selectedProject.name} · 点击切换项目</p>
           ) : (
             <p>暂未选择项目，点击前往项目列表选择</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={({ className: ttClassName, onClick: ttOnClick, disabled: _ttDisabled, ...ttProps }: any) => {
+            const disabled = !selectedProject
+            return (
+              <Button
+                variant="ghost"
+                disabled={disabled}
+                onClick={(e) => {
+                  if (disabled) return
+                  ttOnClick?.(e)
+                  handleEpisodeClick()
+                }}
+                className={cn(
+                  'gap-2 h-9 px-3 hover:bg-accent max-w-[240px]',
+                  disabled && 'opacity-50 cursor-not-allowed',
+                  ttClassName
+                )}
+                {...ttProps}
+              >
+                <HugeiconsIcon icon={Book02Icon} className="text-primary shrink-0" />
+                {selectedProject && selectedEpisode ? (
+                  <>
+                    <span className="font-medium text-sm truncate">
+                      {selectedEpisode.title || `第 ${selectedEpisode.level + 1} 集`}
+                    </span>
+                    <HugeiconsIcon icon={ExchangeIcon} className="size-4 text-muted-foreground shrink-0" />
+                  </>
+                ) : selectedProject ? (
+                  <span className="text-sm text-muted-foreground">无集数，点击选择</span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">请先选择项目</span>
+                )}
+              </Button>
+            )
+          }}
+        />
+        <TooltipContent>
+          {selectedProject && selectedEpisode ? (
+            <p>{selectedEpisode.title || `第 ${selectedEpisode.level + 1} 集`} · 点击切换集数</p>
+          ) : selectedProject ? (
+            <p>暂未选择集数，点击前往剧本管理选择</p>
+          ) : (
+            <p>请先选择一个项目，再选择对应集数</p>
           )}
         </TooltipContent>
       </Tooltip>

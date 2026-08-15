@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import {
@@ -124,7 +124,7 @@ function formatDuration(sec?: number | null): string {
 
 export default function ScriptsPage() {
   const queryClient = useQueryClient()
-  const { selectedProject } = useProjectStore()
+  const { selectedProject, selectedEpisode, selectEpisode } = useProjectStore()
   const projectId = selectedProject?.id ?? null
 
   const [editTarget, setEditTarget] = useState<Episode | null>(null)
@@ -218,6 +218,12 @@ export default function ScriptsPage() {
     [list],
   )
   const hasProject = projectId !== null
+
+  useEffect(() => {
+    if (!hasProject || !selectedEpisode) return
+    const exists = episodes.some(({ ep }) => ep.id === selectedEpisode.id)
+    if (!exists) selectEpisode(null)
+  }, [episodes, selectedEpisode, hasProject, selectEpisode])
 
   return (
     <div className="flex flex-col gap-6">
@@ -344,12 +350,15 @@ export default function ScriptsPage() {
           {episodes.map(({ ep, no }, idx) => {
             const canMoveUp = idx > 0
             const canMoveDown = idx < episodes.length - 1
+            const isSelected = selectedEpisode?.id === ep.id
             return (
               <Card
                 key={ep.id}
+                onClick={() => selectEpisode(ep)}
                 className={cn(
-                  'transition-all duration-200',
+                  'transition-all duration-200 cursor-pointer',
                   'hover:shadow-sm hover:border-border/80',
+                  isSelected && 'ring-2 ring-primary/60 border-primary/60 shadow-sm',
                 )}
               >
                 <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
