@@ -31,3 +31,28 @@ CREATE INDEX IF NOT EXISTS idx_projects_status       ON projects(status);
 CREATE INDEX IF NOT EXISTS idx_projects_created_at   ON projects(created_at);
 CREATE INDEX IF NOT EXISTS idx_projects_level        ON projects(level);
 CREATE INDEX IF NOT EXISTS idx_projects_name         ON projects(name);
+
+-- ---------------------------------------------------------------------------
+-- 002 ai_backends：全局 AI 推理后端配置（不绑定项目，所有项目共享）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ai_backends (
+    id            INTEGER PRIMARY KEY,
+    level         INTEGER NOT NULL,
+    status        TEXT    NOT NULL DEFAULT 'active',
+    created_at    TEXT    NOT NULL,
+    updated_at    TEXT    NOT NULL,
+    name          TEXT    NOT NULL,
+    category      TEXT    NOT NULL,
+    base_url      TEXT    NOT NULL,
+    model_name    TEXT    NOT NULL,
+    api_key       TEXT    NOT NULL,
+    is_default    INTEGER NOT NULL DEFAULT 0,
+    extra         TEXT
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_ai_backends_status     ON ai_backends(status);
+CREATE INDEX IF NOT EXISTS idx_ai_backends_category   ON ai_backends(category);
+CREATE INDEX IF NOT EXISTS idx_ai_backends_level      ON ai_backends(level);
+CREATE INDEX IF NOT EXISTS idx_ai_backends_name       ON ai_backends(name);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_ai_backends_default_cat
+    ON ai_backends(category) WHERE status = 'active' AND is_default = 1;

@@ -71,6 +71,18 @@ pub enum ErrorCode {
     /// 进程内 OnceCell 单例被重复 install
     #[error("配置重复安装")]
     ConfigAlreadyInstalled,
+    /// AI 后端配置不存在或已被软删除
+    #[error("AI 后端配置不存在")]
+    AiBackendNotFound,
+    /// AI 后端配置 name 在同 category 下重复
+    #[error("AI 后端配置名称已存在")]
+    AiBackendNameDuplicated,
+    /// AI 后端 category 不在白名单（text/image/video/audio/embedding）
+    #[error("AI 后端类型不合法")]
+    AiBackendCategoryInvalid,
+    /// AI 后端必填字段为空（name/base_url/model_name/api_key）
+    #[error("AI 后端配置字段不完整")]
+    AiBackendFieldsMissing,
 
     // ===== 04 业务 - Project / 剧本 / 剧集 =====
     #[error("项目不存在")]
@@ -162,6 +174,10 @@ impl ErrorCode {
             ConfigLoad => ("E", 03_001),
             ConfigInvalid => ("E", 03_002),
             ConfigAlreadyInstalled => ("E", 03_003),
+            AiBackendNotFound => ("E", 03_004),
+            AiBackendNameDuplicated => ("E", 03_005),
+            AiBackendCategoryInvalid => ("E", 03_006),
+            AiBackendFieldsMissing => ("E", 03_007),
 
             // ===== 04 业务 - Project / 剧集 =====
             ProjectNotFound => ("E", 04_001),
@@ -222,11 +238,14 @@ mod tests {
             InvalidJson, InvalidParam, InvalidQuery, InvalidForm,
             Unauthorized, PermissionDenied, TokenInvalid, OriginCheckFailed,
             ConfigLoad, ConfigInvalid, ConfigAlreadyInstalled,
+            AiBackendNotFound, AiBackendNameDuplicated, AiBackendCategoryInvalid, AiBackendFieldsMissing,
+            ProjectNotFound, ProjectNameInvalid, ProjectSlugDuplicated, ProjectBadState,
             StoryNotFound, StoryDuplicated, StoryBadState, SceneNotFound, CharacterNotFound,
             JobNotFound, JobBadState, JobCancelFailed, JobProgressError,
             FileTooLarge, FileTypeNotAllowed, FileNotFound, FileWriteFailed,
             AiRateLimited, AiTimeout, AiBadFormat, AiAuthFailed,
-            DatabaseError, ObjectStorageError, MqError, RenderNodeError,
+            DatabaseError, DatabaseQueryError, DatabaseConstraint,
+            ObjectStorageError, MqError, RenderNodeError,
         ];
         let mut seen: HashSet<String> = HashSet::new();
         for code in all {

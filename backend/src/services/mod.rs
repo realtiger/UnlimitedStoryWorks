@@ -2,3 +2,4 @@
 //! 未来按领域拆：project_service / story_service / job_service / ai_service ...
 
 pub mod project_service;
+pub mod ai_backends_service;

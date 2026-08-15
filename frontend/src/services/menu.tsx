@@ -19,33 +19,7 @@ export type MenuItemIcon = React.ComponentType<MenuItemIconProps>
 export { type HeaderNavItem, type SidebarSection, type FooterLink }
 
 export async function fetchHeaderMenu(): Promise<HeaderNavItem[]> {
-  return [
-    // {
-    //   label: '首页',
-    //   href: '/',
-    //   icon: ({ className, ...props }) => (
-    //     <HugeiconsIcon icon={Home01Icon} className={className} {...props} />
-    //   ),
-    // },
-    // {
-    //   label: '项目',
-    //   href: '/projects',
-    //   icon: ({ className, ...props }) => (
-    //     <HugeiconsIcon icon={FolderCheckIcon} className={className} {...props} />
-    //   ),
-    // },
-    // {
-    //   label: '关于',
-    //   href: '/about',
-    //   icon: ({ className, ...props }) => (
-    //     <HugeiconsIcon
-    //       icon={InformationCircleIcon}
-    //       className={className}
-    //       {...props}
-    //     />
-    //   ),
-    // },
-  ]
+  return []
 }
 
 export async function fetchSidebarMenu(): Promise<SidebarSection[]> {
@@ -72,12 +46,11 @@ export async function fetchSidebarMenu(): Promise<SidebarSection[]> {
           ),
         },
         {
-          label: '故事创作',
-          href: '/stories',
+          label: '剧本管理',
+          href: '/scripts',
           icon: ({ className, ...props }) => (
             <HugeiconsIcon icon={Book02Icon} className={className} {...props} />
           ),
-          disabled: true,
         },
         {
           label: '创作中心',
@@ -90,6 +63,18 @@ export async function fetchSidebarMenu(): Promise<SidebarSection[]> {
             { label: '我的草稿', href: '/stories/drafts' },
             { label: '已发布', href: '/stories/published' },
           ],
+        },
+      ],
+    },
+    {
+      title: '配置',
+      items: [
+        {
+          label: 'AI 配置',
+          href: '/ai-config',
+          icon: ({ className, ...props }) => (
+            <HugeiconsIcon icon={SparklesIcon} className={className} {...props} />
+          ),
         },
       ],
     },
